@@ -149,7 +149,17 @@ import{initializeApp}from"https://www.gstatic.com/firebasejs/12.19.0/firebase-ap
 import{getAuth,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,sendPasswordResetEmail,signOut,updateProfile,connectAuthEmulator}from"https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import{initializeFirestore,persistentLocalCache,persistentMultipleTabManager,connectFirestoreEmulator,doc,getDoc,setDoc,updateDoc,deleteDoc,addDoc,collection,onSnapshot,writeBatch,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import{getAI,getGenerativeModel,GoogleAIBackend,Schema}from"https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
-import{firebaseConfig}from"./config.js?v=1792387479";
+// Configurazione del progetto Firebase "dispensasmart-3fe65".
+// Questi valori sono pubblici: la sicurezza dei dati è garantita dalle regole in firestore.rules.
+const firebaseConfig = {
+  apiKey: "AIzaSyCS3XmUl43rSS49KuFZk0C8T-uVvvMErbE",
+  authDomain: "dispensasmart-3fe65.firebaseapp.com",
+  projectId: "dispensasmart-3fe65",
+  storageBucket: "dispensasmart-3fe65.firebasestorage.app",
+  messagingSenderId: "659045095293",
+  appId: "1:659045095293:web:8a5d13d75e2883c4e65e14"
+};
+
 
 const CAT={pro:["Proteine","🍗"],car:["Carboidrati","🍝"],veg:["Verdura e frutta","🥦"],gra:["Grassi buoni","🫒"],snk:["Snack e dolci","🍪"]};
 const C=[
