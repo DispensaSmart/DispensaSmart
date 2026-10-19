@@ -31,7 +31,8 @@ const r5=q=>Math.max(5,Math.round(q/5)*5);
 const emu=new URLSearchParams(location.search).has("emu");
 let auth=null,db=null,aiModel=null;
 if(firebaseConfig||emu){
-  const app=initializeApp(firebaseConfig||{apiKey:"demo",projectId:"demo-dispensa",authDomain:"localhost"});
+  // in prova (?emu) si usa sempre il progetto finto, mai quello vero
+  const app=initializeApp(emu||!firebaseConfig?{apiKey:"demo",projectId:"demo-dispensa",authDomain:"localhost"}:firebaseConfig);
   auth=getAuth(app);
   db=initializeFirestore(app,emu?{}:{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
   try{aiModel=getGenerativeModel(getAI(app,{backend:new GoogleAIBackend()}),{model:"gemini-2.5-flash",generationConfig:{responseMimeType:"application/json",responseSchema:AISCHEMA()}})}catch(e){console.warn("AI non disponibile",e)}
@@ -395,7 +396,7 @@ function draw(){const v=$("#v"),hd=$("#hd"),nav=$("nav");
   document.querySelectorAll("nav [data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t==tab||((tab=="idee"||tab=="plan"||tab=="report")&&b.dataset.t=="home")))}
 
 function readP(box){const o={};box.querySelectorAll("[data-p]").forEach(e=>{const k=e.dataset.p;o[k]=e.type=="checkbox"?e.checked:["eta","peso","alt","att"].includes(k)?+e.value:e.value.trim()});return o}
-async function act(a,b){const it=S.items.find(x=>x.id==b.dataset.i);if((a=="del"||a=="waste")&&pe)pe=null;
+async function act(a,b){const it=S.items.find(x=>x.id==b.dataset.i);if((a=="del"||a=="waste")&&pe){pe=null;render()}
   try{
   if(a=="am"){am=b.dataset.v;amsg="";return render()}
   if(a=="login"||a=="reg"||a=="reset"){const e=$("#ae").value.trim(),p=$("#ap")?.value||"",n=$("#an")?.value.trim();busy=true;amsg="";render();
