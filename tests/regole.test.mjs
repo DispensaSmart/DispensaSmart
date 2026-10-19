@@ -1,0 +1,24 @@
+import {initializeApp} from 'firebase/app';
+import {getAuth,connectAuthEmulator,createUserWithEmailAndPassword} from 'firebase/auth';
+import {getFirestore,connectFirestoreEmulator,doc,setDoc,getDoc,updateDoc,arrayUnion,writeBatch,collection,getDocs,addDoc} from 'firebase/firestore';
+async function user(n){const app=initializeApp({apiKey:'demo',projectId:'demo-dispensa'},n);const a=getAuth(app);connectAuthEmulator(a,'http://127.0.0.1:9099',{disableWarnings:true});const d=getFirestore(app);connectFirestoreEmulator(d,'127.0.0.1',8080);const c=await createUserWithEmailAndPassword(a,n+'@r.it','segreta123');return{uid:c.user.uid,db:d}}
+const ok=async(l,p,exp)=>{try{await p;console.log((exp?'PASS ':'FAIL ')+l+(exp?'':' (doveva essere rifiutato)'))}catch(e){console.log((exp?'FAIL ':'PASS ')+l+(exp?' '+e.code:''))}};
+const A=await user('a'+Date.now()),X=await user('x'+Date.now());
+const b=writeBatch(A.db);b.set(doc(A.db,'households','h1'+A.uid),{name:'R',owner:A.uid,members:[A.uid],code:'ABC234'});b.set(doc(A.db,'invites','ABC234'),{hh:'h1'+A.uid});await ok('A crea famiglia',b.commit(),true);
+const H='h1'+A.uid;
+await ok('A aggiunge prodotto',addDoc(collection(A.db,'households',H,'items'),{c:'pol',q:100}),true);
+await ok('X legge famiglia altrui',getDoc(doc(X.db,'households',H)),false);
+await ok('X legge prodotti altrui',getDocs(collection(X.db,'households',H,'items')),false);
+await ok('X scrive prodotti altrui',addDoc(collection(X.db,'households',H,'items'),{c:'pol',q:1}),false);
+await ok('X entra senza codice',updateDoc(doc(X.db,'households',H),{members:arrayUnion(X.uid)}),false);
+await ok('X elenca inviti',getDocs(collection(X.db,'invites')),false);
+await setDoc(doc(X.db,'users',X.uid),{name:'X',hh:null,join:'WRONG1'});
+await ok('X entra con codice sbagliato',updateDoc(doc(X.db,'households',H),{members:arrayUnion(X.uid)}),false);
+await ok('X crea famiglia con altri membri',setDoc(doc(X.db,'households','hx'),{name:'x',owner:X.uid,members:[X.uid,A.uid],code:'Q'}),false);
+await setDoc(doc(X.db,'users',X.uid),{name:'X',hh:null,join:'ABC234'});
+await ok('X entra con codice giusto',updateDoc(doc(X.db,'households',H),{members:arrayUnion(X.uid)}),true);
+await ok('X ora legge prodotti',getDocs(collection(X.db,'households',H,'items')),true);
+await ok('X cambia proprietario',updateDoc(doc(X.db,'households',H),{owner:X.uid}),false);
+await ok('X scrive in collezione non prevista',addDoc(collection(X.db,'households',H,'segreti'),{a:1}),false);
+await ok('X legge utente A',getDoc(doc(X.db,'users',A.uid)),false);
+process.exit(0);

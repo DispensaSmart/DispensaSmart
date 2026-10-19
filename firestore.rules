@@ -1,0 +1,46 @@
+rules_version = '2';
+// Ogni famiglia legge e scrive solo i propri dati. Si entra in una famiglia solo conoscendo il codice di invito.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signed() { return request.auth != null; }
+    function hh(h) { return /databases/$(db)/documents/households/$(h); }
+    function member(h) { return signed() && exists(hh(h)) && request.auth.uid in get(hh(h)).data.members; }
+
+    match /users/{uid} {
+      allow read: if signed() && request.auth.uid == uid;
+      allow create, update: if signed() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'hh', 'join', 'email']);
+    }
+
+    match /invites/{code} {
+      // si può leggere un invito solo conoscendone il codice: niente elenchi
+      allow get: if signed();
+      allow create: if signed() && request.auth.uid in getAfter(hh(request.resource.data.hh)).data.members
+        && request.resource.data.keys().hasOnly(['hh']);
+      allow delete: if member(resource.data.hh);
+    }
+
+    match /households/{h} {
+      allow get: if member(h);
+      allow create: if signed() && request.resource.data.owner == request.auth.uid
+        && request.resource.data.members == [request.auth.uid]
+        && request.resource.data.keys().hasOnly(['name', 'owner', 'members', 'code', 'days', 'last']);
+      // i membri cambiano nome, codice, ritmo, data dell'ultima spesa e ordine delle corsie, ma non l'elenco dei membri né il proprietario
+      allow update: if member(h)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'code', 'days', 'last', 'aisles'])
+      // entrare: aggiungere solo se stessi, dopo aver indicato il codice giusto nel proprio profilo utente
+        || signed() && !(request.auth.uid in resource.data.members)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.members.toSet() == resource.data.members.toSet().union([request.auth.uid].toSet())
+        && get(/databases/$(db)/documents/users/$(request.auth.uid)).data.join == resource.data.code
+      // uscire: togliere solo se stessi (il proprietario resta)
+        || member(h) && request.auth.uid != resource.data.owner
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.members.toSet() == resource.data.members.toSet().difference([request.auth.uid].toSet());
+
+      match /{col}/{id} {
+        allow read, write: if member(h) && col in ['items', 'shop', 'waste', 'cooked', 'profiles', 'plan', 'products', 'used', 'buys'];
+      }
+    }
+  }
+}
