@@ -6,6 +6,14 @@
 <meta name="theme-color" content="#fff7ec">
 <script>/* tema scelto su questo telefono, applicato prima di disegnare per evitare lampi */try{var th=localStorage.getItem("theme");if(th=="light"||th=="dark")document.documentElement.dataset.theme=th}catch(e){}</script>
 <title>Dispensa smart</title>
+<!-- aperta dall'icona sulla schermata Home si comporta come un'app, senza barre di Safari -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dispensa">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <style>
 :root{--bg:#fff7ec;--card:#fff;--tx:#2a1d3a;--mu:#7b6c8c;--bd:#f1e6d8;--ac:#ff6b4a;--ac2:#ffb347;--ok:#14a46c;--wa:#c27400;--er:#e5484d;--oks:#d9f7e8;--was:#ffefc7;--ers:#ffe0e0;--sh:0 4px 14px #ff6b4a14;--bd2:#e7d9c8;--erb:#f5b5b5;--ink:#2a1d3a;--unc:#fff3b0;--uncin:#fffbe6;--navsh:0 10px 30px #2a1d3a26;--t-pro:#ffe0e0;--t-car:#fff1c9;--t-veg:#dcf5e3;--t-gra:#efe6ff;--t-snk:#ffe6f2;--t-bev:#e0f2ff;--t-alt:#f1ece4}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#16111d;--card:#241c2f;--tx:#f4eef9;--mu:#ab9cbc;--bd:#3a3048;--bd2:#4a3e5a;--ok:#2fc486;--wa:#f0a53a;--er:#ff6b6b;--oks:#173a2b;--was:#3d3016;--ers:#44212a;--erb:#7a3540;--ink:#30263d;--unc:#5a4b10;--uncin:#3a3210;--sh:0 4px 14px #00000040;--navsh:0 10px 30px #00000066;--t-pro:#4a2a2e;--t-car:#4a3d1e;--t-veg:#1f3d2a;--t-gra:#352b4d;--t-snk:#4a2a3c;--t-bev:#1e3449;--t-alt:#3a332b;color-scheme:dark}}
