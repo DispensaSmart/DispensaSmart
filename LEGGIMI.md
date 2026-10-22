@@ -13,6 +13,7 @@ La dispensa di tutta la famiglia: ognuno entra con il proprio account, la famigl
 6. Su GitHub apri `public/config.js`, tocca la matita e sostituisci `null` con il blocco copiato. *Commit changes*.
 7. **Authentication** → *Impostazioni* → *Domini autorizzati* → *Aggiungi dominio* → `dispensasmart.github.io`.
 8. **AI Logic** (menu a sinistra, sezione *Build*/*Crea*) → *Inizia* → scegli **Gemini Developer API** (gratuita) → *Abilita*. Serve per leggere foto di prodotti e scontrini.
+   Se la lettura dice che *App Check è attivo*: in **App Check** → scheda **API** → **Firebase AI Logic**, togli l'applicazione forzata (l'app non usa App Check).
 
 ### 2. GitHub Pages
 Nel repository: **Settings** → **Pages** → *Source*: **GitHub Actions**. A ogni modifica l'app si aggiorna da sola su

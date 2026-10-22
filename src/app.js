@@ -104,6 +104,13 @@ async function aiRead(file,m,nm){const b64=await shrink(file,m=="rec"?3200:2000)
   if(window.__mockAI)return window.__mockAI(m,nm);
   if(!aiModel)throw new Error("noai");
   const r=await aiModel.generateContent([AIPROMPT(m,nm),{inlineData:{mimeType:"image/jpeg",data:b64}}]);return JSON.parse(r.response.text()).prodotti||[]}
+// spiega perché Gemini non ha risposto, invece di un errore generico
+function aiErr(e,def){const m=String(e?.message||e);console.error(e);
+  return m=="noai"?"La lettura con Gemini non è attiva: controlla Firebase AI Logic (vedi LEGGIMI)."
+  :/app check/i.test(m)?"Firebase blocca Gemini perché App Check è attivo su Firebase AI Logic (vedi LEGGIMI)."
+  :/40[13]|PERMISSION_DENIED|API_KEY|has not been used|is disabled/i.test(m)?"Gemini non è attivo nel progetto Firebase: controlla Firebase AI Logic (vedi LEGGIMI)."
+  :/429|quota|RESOURCE_EXHAUSTED/i.test(m)?"Gemini ha raggiunto il limite di richieste: riprova tra qualche minuto."
+  :!navigator.onLine||/failed to fetch|network/i.test(m)?"Serve la connessione a internet per leggere la foto.":def}
 // riduce la foto (scontrini più grandi: il testo è piccolo e lungo) per inviare meno dati
 function shrink(file,mx=2000){return new Promise((ok,ko)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,mx/Math.max(im.width,im.height)),cv=document.createElement("canvas");cv.width=im.width*k;cv.height=im.height*k;cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(im.src);ok(cv.toDataURL("image/jpeg",.9).split(",")[1])};im.onerror=ko;im.src=URL.createObjectURL(file)})}
 // unisce quanto letto dalla foto dell'etichetta: i valori letti sostituiscono le stime e tolgono il giallo
@@ -115,7 +122,7 @@ async function readLab(file,who){const nm=who=="pe"?pe.v.n:shot.list[who].nome,b
       const u=mergeLab(r,(f,v)=>{if(f=="scadenza")pe.e=v;else pe.v[map[f]]=f=="allergeni"?v.join(", "):v},pe.unc.map(c=>AIF.find(f=>f[1]==c)?.[0]).filter(Boolean));
       pe.unc=u.map(f=>map[f]);pe.msg="Valori aggiornati dall'etichetta."}
     else{const x=shot.list[who];x.incerti=mergeLab(r,(f,v)=>x[f]=v,x.incerti||[]);x.msg="Valori aggiornati dall'etichetta."}}
-  catch(e){console.error(e);box.msg="Non riesco a leggere l'etichetta: riprova più vicino e con più luce."}
+  catch(e){box.msg=aiErr(e,"Non riesco a leggere l'etichetta: riprova più vicino e con più luce.")}
   box.lb=false;render()}
 const labBtn=(who,b)=>b.lb?`<p class="mu">📷 Leggo l'etichetta…</p>`:`<label class="btn o cam lab">📷 Correggi con foto dell'etichetta<input type="file" accept="image/*" capture="environment" data-lab="${who}" hidden></label>${b.msg?`<p class="mu">${esc(b.msg)}</p>`:""}`;
 function okDate(s){return/^\d{4}-\d{2}-\d{2}$/.test(s||"")?s:""}
@@ -479,7 +486,7 @@ document.addEventListener("input",e=>{const t=e.target,f=t.dataset.aif,c=t.datas
   if(c&&pe){if(c=="q"||c=="e")pe[c]=val;else{pe.v[c]=val;if(pe.unc.includes(c)){pe.unc=pe.unc.filter(y=>y!=c);(t.closest("label"))?.classList.remove("unc")}}}});
 document.addEventListener("change",async e=>{if(e.target.dataset.sai)return updateDoc(dref("shop",e.target.dataset.sai),{ai:e.target.value});const lb=e.target.dataset.lab;if(lb!=null&&e.target.files[0]){if(lb!="pe")readShot();return readLab(e.target.files[0],lb=="pe"?"pe":+lb)}
   const sh=e.target.dataset.shot;if(sh&&e.target.files[0]){shot={m:sh,busy:true,list:[]};render();
-    try{shot.list=(await aiRead(e.target.files[0],sh)).map(x=>({...x,on:true,confezioni:x.confezioni||1}))}catch(x){console.error(x);shot=null;vmsg=x.message=="noai"?"La lettura con Gemini non è attiva: controlla Firebase AI Logic (vedi LEGGIMI).":"Non sono riuscito a leggere la foto: riprova con più luce, oppure aggiungi a mano.";sheet=true}
+    try{shot.list=(await aiRead(e.target.files[0],sh)).map(x=>({...x,on:true,confezioni:x.confezioni||1}))}catch(x){shot=null;vmsg=aiErr(x,"Non sono riuscito a leggere la foto: riprova con più luce, oppure aggiungi a mano.");sheet=true}
     if(shot)shot.busy=false;render();return}
   if(e.target.dataset.aif=="on"){readShot();render();return}
 if(e.target.id=="ns")$("#nl").value=dl(e.target.value);
