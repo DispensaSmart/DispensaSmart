@@ -23,6 +23,8 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const nf=(n,d=1)=>n.toLocaleString("it-IT",{maximumFractionDigits:d});
 // campi letti da Gemini → chiave salvata nel prodotto, etichetta
+// gemini-2.5-flash non è più disponibile per i progetti nuovi
+const AIMODEL="gemini-3.8-flash";
 const AIF=[["peso_g","g","Peso g"],["kcal","k","kcal"],["proteine","p","Proteine"],["carboidrati","h","Carboidrati"],["zuccheri","z","di cui zuccheri"],["grassi","f","Grassi"],["grassi_saturi","fs","di cui saturi"],["fibre","fib","Fibre"],["sale","sale","Sale"],["glutine","gl","Glutine"],["allergeni","alg","Allergeni"],["categoria","cat","Categoria"]];
 const NUT=AIF.slice(1,9);
 const fq=(c,q)=>c=="uov"?Math.max(1,Math.round(q/60))+(Math.round(q/60)==1?" uovo":" uova"):q>=1000?nf(q/1000,2)+" kg":Math.round(q)+" g";
@@ -35,7 +37,7 @@ if(firebaseConfig||emu){
   const app=initializeApp(emu||!firebaseConfig?{apiKey:"demo",projectId:"demo-dispensa",authDomain:"localhost"}:firebaseConfig);
   auth=getAuth(app);
   db=initializeFirestore(app,emu?{}:{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
-  try{aiModel=getGenerativeModel(getAI(app,{backend:new GoogleAIBackend()}),{model:"gemini-2.5-flash",generationConfig:{responseMimeType:"application/json",responseSchema:AISCHEMA()}})}catch(e){console.warn("AI non disponibile",e)}
+  try{aiModel=getGenerativeModel(getAI(app,{backend:new GoogleAIBackend()}),{model:AIMODEL,generationConfig:{responseMimeType:"application/json",responseSchema:AISCHEMA(),thinkingConfig:{thinkingLevel:"LOW"}}},{timeout:240000})}catch(e){console.warn("AI non disponibile",e)}
   if(emu){connectAuthEmulator(auth,"http://127.0.0.1:9099",{disableWarnings:true});connectFirestoreEmulator(db,"127.0.0.1",8080)}
 }
 
@@ -95,7 +97,7 @@ const AILIST=()=>C.filter(c=>!c.u).map(c=>c.id+"="+c.n).join(", ");
 function AISCHEMA(){const n=Schema.number(),t=Schema.string();
   return Schema.object({properties:{prodotti:Schema.array({items:Schema.object({properties:{nome:t,marca:t,categoria:Schema.enumString({enum:Object.keys({pro:1,car:1,veg:1,gra:1,snk:1,bev:1,alt:1})}),sottocategoria:t,catalogo:t,peso_g:n,confezioni:n,scadenza:t,conservazione:Schema.enumString({enum:["dis","fri","con"]}),kcal:n,proteine:n,carboidrati:n,zuccheri:n,grassi:n,grassi_saturi:n,fibre:n,sale:n,glutine:Schema.boolean(),allergeni:Schema.array({items:t}),prezzo:n,incerti:Schema.array({items:Schema.enumString({enum:AIF.map(f=>f[0])})})},
     optionalProperties:["prezzo","incerti","marca","sottocategoria","catalogo","scadenza","kcal","proteine","carboidrati","zuccheri","grassi","grassi_saturi","fibre","sale","allergeni","confezioni"]})})}})}
-const AIPROMPT=(m,nm)=>`Sei l'assistente di una dispensa di casa in Italia. ${m=="lab"?`La foto mostra l'etichetta (tabella nutrizionale, ingredienti o confezione) del prodotto «${nm}»: restituisci UN solo prodotto con tutto quello che leggi. Nel campo incerti metti solo i valori che non riesci a leggere dalla foto.`:m=="rec"?"La foto è uno SCONTRINO della spesa italiano. Leggilo riga per riga dall'alto in basso senza saltarne nessuna: ogni riga con un prezzo è un prodotto. Ignora intestazione, totale, subtotale, IVA, resto, pagamento, punti fedeltà e sacchetti. Le righe tipo «2 x 1,29» o «0,512 kg x 2,49 €/kg» si riferiscono al prodotto sopra. Se lo stesso prodotto compare su più righe (es. due righe «ACQUA ROCCHETTA NAT») restituiscilo una volta sola sommando le confezioni. Le righe con importo negativo (es. «Offerta 2X1», «Sconto») non sono prodotti: togli l'importo dal prezzo del prodotto a cui si riferiscono. Il prefisso «SG» indica un prodotto senza glutine (glutine false). Controlla che il numero di confezioni torni con «N. Articoli» se è scritto. Elenca i prodotti alimentari e per la casa, interpretando le abbreviazioni (es. «LATTE PS GRAN 1L» = Latte parzialmente scremato Granarolo 1 L, «PASTA BAR SPAGH 5» = Spaghetti n.5 Barilla), con il numero di confezioni e il prezzo in euro di UNA confezione (se la riga dice 2 x 1,29 il prezzo è 1.29; considera gli sconti scritti sotto la riga). Non inventare la scadenza.":"La foto mostra uno o più PRODOTTI confezionati: leggi l'etichetta."}
+const AIPROMPT=(m,nm)=>`Sei l'assistente di una dispensa di casa in Italia. ${m=="lab"?`La foto mostra l'etichetta (tabella nutrizionale, ingredienti o confezione) del prodotto «${nm}»: restituisci UN solo prodotto con tutto quello che leggi. Nel campo incerti metti solo i valori che non riesci a leggere dalla foto.`:m=="rec"?"La foto è uno SCONTRINO della spesa italiano. Leggilo riga per riga dall'alto in basso senza saltarne nessuna: ogni riga con un prezzo è un prodotto. Ignora intestazione, totale, subtotale, IVA, resto, pagamento, punti fedeltà e sacchetti. Le righe tipo «2 x 1,29» o «0,512 kg x 2,49 €/kg» si riferiscono al prodotto sopra. Se lo stesso prodotto compare su più righe (es. due righe «ACQUA ROCCHETTA NAT») restituiscilo una volta sola sommando le confezioni. Le righe con importo negativo (es. «Offerta 2X1», «Sconto») non sono prodotti: togli l'importo dal prezzo del prodotto a cui si riferiscono. Il prefisso «SG» indica un prodotto senza glutine (glutine false). Controlla che il numero di confezioni torni con «N. Articoli» se è scritto. Elenca i prodotti alimentari e per la casa, interpretando le abbreviazioni (es. «LATTE PS GRAN 1L» = Latte parzialmente scremato Granarolo 1 L, «PASTA BAR SPAGH 5» = Spaghetti n.5 Barilla), con il numero di confezioni e il prezzo in euro di UNA confezione (se la riga dice 2 x 1,29 il prezzo è 1.29; considera gli sconti scritti sotto la riga). Le righe a 0,00 (omaggi, es. «2 X0,00») sono prodotti: includili con prezzo 0. Non inventare la scadenza.":"La foto mostra uno o più PRODOTTI confezionati: leggi l'etichetta."}
 Per ogni prodotto restituisci: nome chiaro in italiano, marca, categoria (pro=proteine e latticini, car=carboidrati, veg=verdura e frutta, gra=grassi e frutta secca, snk=snack e dolci, bev=bevande, alt=condimenti e altro), sottocategoria breve (es. "Pasta secca", "Formaggi", "Legumi in scatola"), peso netto in grammi di UNA confezione (per i liquidi 1 ml = 1 g), scadenza in formato AAAA-MM-GG solo se è leggibile, conservazione dopo l'acquisto (dis=dispensa, fri=frigo, con=freezer), valori nutrizionali per 100 g, glutine true se lo contiene o potrebbe contenerlo, allergeni.
 Compila SEMPRE tutti i valori nutrizionali: se non sono leggibili (sempre, nel caso dello scontrino) usa i valori tipici di quel prodotto, della marca se la conosci. Fai lo stesso con il peso della confezione.
 Nel campo incerti elenca i nomi dei campi che hai stimato o di cui non sei sicuro (es. ["kcal","grassi","peso_g"]): verranno evidenziati per farli controllare. Lascia incerti vuoto solo se hai letto tutto dall'etichetta.
@@ -103,11 +105,18 @@ Nel campo catalogo metti l'id del prodotto base più simile tra questi, oppure s
 async function aiRead(file,m,nm){const b64=await shrink(file,m=="rec"?3200:2000);
   if(window.__mockAI)return window.__mockAI(m,nm);
   if(!aiModel)throw new Error("noai");
-  const r=await aiModel.generateContent([AIPROMPT(m,nm),{inlineData:{mimeType:"image/jpeg",data:b64}}]);return JSON.parse(r.response.text()).prodotti||[]}
+  const req=[AIPROMPT(m,nm),{inlineData:{mimeType:"image/jpeg",data:b64}}];let r;
+  // se Gemini è sovraccarico riprova da solo un paio di volte
+  for(let i=0;;i++){try{r=await aiModel.generateContent(req);break}catch(e){if(i>=2||!AIBUSY.test(String(e?.message)))throw e;await new Promise(ok=>setTimeout(ok,4000*(i+1)))}}
+  return JSON.parse(r.response.text()).prodotti||[]}
+const AIBUSY=/\[50[03] |high demand|overloaded|UNAVAILABLE/i;
 // spiega perché Gemini non ha risposto, invece di un errore generico
 function aiErr(e,def){const m=String(e?.message||e);console.error(e);
   return m=="noai"?"La lettura con Gemini non è attiva: controlla Firebase AI Logic (vedi LEGGIMI)."
   :/app check/i.test(m)?"Firebase blocca Gemini perché App Check è attivo su Firebase AI Logic (vedi LEGGIMI)."
+  :/no longer available|\[404 /i.test(m)?"Il modello di Gemini usato dall'app non è più disponibile: l'app va aggiornata."
+  :/timeout|AbortError/i.test(m)?"Gemini ci sta mettendo troppo in questo momento: riprova tra qualche minuto."
+  :AIBUSY.test(m)?"Gemini è molto occupato in questo momento: riprova tra qualche minuto."
   :/40[13]|PERMISSION_DENIED|API_KEY|has not been used|is disabled/i.test(m)?"Gemini non è attivo nel progetto Firebase: controlla Firebase AI Logic (vedi LEGGIMI)."
   :/429|quota|RESOURCE_EXHAUSTED/i.test(m)?"Gemini ha raggiunto il limite di richieste: riprova tra qualche minuto."
   :!navigator.onLine||/failed to fetch|network/i.test(m)?"Serve la connessione a internet per leggere la foto.":def}
@@ -135,7 +144,7 @@ async function saveShot(){const sel=shot.list.filter(x=>x.on);if(!sel.length)ret
     w.set(doc(col("items")),{c:"u_"+pid,q,e:okDate(x.scadenza)||null,l:x.conservazione||"dis",...(eur?{pg:+(eur/g).toFixed(5)}:{})})});
   if(tot)w.set(doc(col("buys")),{d:iso(0),eur:+tot.toFixed(2),n:sel.length,by:myName()});
   await w.commit();vmsg=`Aggiunti ${sel.length} prodotti alla dispensa.`;shot=null}
-function vShot(){if(shot.busy)return`<div class="scrim"></div><div class="sheet"><div class="grab"></div><h2>Leggo la foto…</h2><div class="logo spin" style="margin:20px auto">📷</div><p class="mu" style="text-align:center">Gemini sta leggendo ${shot.m=="rec"?"lo scontrino":"l’etichetta"}.</p></div>`;
+function vShot(){if(shot.busy)return`<div class="scrim"></div><div class="sheet"><div class="grab"></div><h2>Leggo la foto…</h2><div class="logo spin" style="margin:20px auto">📷</div><p class="mu" style="text-align:center">Gemini sta leggendo ${shot.m=="rec"?"lo scontrino: può volerci qualche minuto":"l’etichetta"}.</p></div>`;
   const L=shot.list;return`<div class="scrim" data-a="shotx"></div><div class="sheet"><div class="grab"></div><h2>${L.length?`Ho trovato ${L.length} ${L.length==1?"prodotto":"prodotti"}`:"Non ho trovato prodotti"}</h2><p class="mu">Controlla e correggi prima di aggiungere.${L.some(x=>x.incerti?.length)?' <span class="unc">In giallo</span> i valori stimati da Gemini.':""}</p>
   ${L.map((x,i)=>`<div class="pf ai" data-ai="${i}"><label class="ck2"><input type="checkbox" data-aif="on" ${x.on?"checked":""}> <b>${esc(x.nome)}</b>${x.marca?` · ${esc(x.marca)}`:""}</label>
   <div class="mu">${esc(CAT[x.categoria]?.[0]||"Altro")}${x.sottocategoria?" › "+esc(x.sottocategoria):""}${x.catalogo&&K(x.catalogo)?" · conta come "+K(x.catalogo).n.toLowerCase():""}${x.glutine?" · 🌾 glutine":""}</div>
